@@ -2,6 +2,7 @@
 // AI 모델을 쓰지 않는 규칙 기반이라 "요약문"이 아니라 "원문에서 고른 핵심 문장"입니다.
 const { decode, strip } = require('./collector');
 const { translateBatch } = require('./translate');
+const { readText } = require('./charset');
 
 const UA = 'Mozilla/5.0 (compatible; AI-Newsdesk/1.0; reader)';
 const STOP = new Set('the and for with that this from are was has have will but not you your about into over after more than says said its their they them been were also can could would should which who what when where how why new one all out our his her she him'.split(' '));
@@ -25,7 +26,7 @@ async function fetchHtml(url) {
     const r = await fetch(url, { signal: ctl.signal, redirect: 'follow', headers: { 'User-Agent': UA, Accept: 'text/html', 'Accept-Language': 'ko,en;q=0.8' } });
     if (!r.ok || !/html/i.test(r.headers.get('content-type') || '')) throw new Error('HTTP ' + r.status);
     if (!isPublicUrl(r.url || url)) throw new Error('blocked');
-    return (await r.text()).slice(0, 1500000);
+    return (await readText(r)).slice(0, 1500000);
   } finally { clearTimeout(t); }
 }
 

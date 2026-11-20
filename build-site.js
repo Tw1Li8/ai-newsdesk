@@ -59,7 +59,7 @@ async function pool(list, n, fn) {
   let digests = {};
   const dpath = path.join(DATA, 'digests.json');
   try { digests = JSON.parse(fs.readFileSync(dpath, 'utf8')); } catch {}
-  const todo = targets.filter((i) => !digests[i.id] || digests[i.id].v !== 4);
+  const todo = targets.filter((i) => !digests[i.id] || digests[i.id].v !== 4 || /�/.test(JSON.stringify(digests[i.id])));
   log(`요약 생성 ${todo.length}건 (캐시 재사용 ${targets.length - todo.length}건)`);
   await pool(todo, 6, async (it) => {
     const d = await buildDigest(it);

@@ -1,4 +1,5 @@
 // 수집기: RSS/Atom/JSON/HTML 소스를 병렬로 가져와 정규화·중복제거 후 저장합니다. 외부 의존성 없음(Node 18+).
+const { readText } = require('./charset');
 const crypto = require('crypto');
 
 const UA = 'Mozilla/5.0 (compatible; AI-Newsdesk/1.0; personal dashboard)';
@@ -118,7 +119,7 @@ async function fetchText(url, timeoutMs = 20000) {
   try {
     const r = await fetch(url, { signal: ctl.signal, redirect: 'follow', headers: { 'User-Agent': UA, Accept: 'application/rss+xml, application/atom+xml, application/xml, application/json, text/html;q=0.8, */*;q=0.5', 'Accept-Language': 'ko,en;q=0.8' } });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    return await r.text();
+    return await readText(r);
   } finally { clearTimeout(t); }
 }
 

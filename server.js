@@ -205,6 +205,7 @@ server.listen(PORT, HOST, () => {
   schedule();
   { const n0 = Object.keys(store.items).length; store.items = Object.fromEntries(Object.entries(store.items).filter(([, i]) => !/^masto/.test(i.sourceId) && !/^(https?:|www\.)/i.test(i.title))); const n1 = Object.keys(store.items).length; if (n1 !== n0) console.log('[migrate] 저품질 항목 ' + (n0 - n1) + '건 정리'); }
   { const n0 = Object.keys(store.items).length; store.items = Object.fromEntries(Object.entries(store.items).filter(([, i]) => !/news\.google\.com/.test(i.url))); const n1 = Object.keys(store.items).length; if (n1 !== n0) console.log('[migrate] 구글뉴스 경유 항목 ' + (n0 - n1) + '건 정리'); }
+  { let n = 0; for (const i of Object.values(store.items)) if (i.digest && /�/.test(JSON.stringify(i.digest))) { delete i.digest; n++; } if (n) console.log('[migrate] 글자 깨진 요약 ' + n + '건 폐기(다시 생성)'); }
   { computeRanks(store); save('items.json', store); }
   if (Date.now() - (store.updatedAt || 0) > 10 * 60000) refresh();
 });

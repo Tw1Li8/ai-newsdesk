@@ -1,4 +1,5 @@
 // 이미지 보강: 이미지가 없는 상위 기사들의 페이지에서 대표 이미지(og:image 등)를 가져옵니다. (링크 미리보기와 같은 방식)
+const { readText } = require('./charset');
 const { scoreOf } = require('./rank');
 const { isPublicUrl } = require('./digest');
 const UA = 'Mozilla/5.0 (compatible; AI-Newsdesk/1.0; link preview)';
@@ -24,7 +25,7 @@ async function fetchOg(url) {
   try {
     const r = await fetch(url, { signal: ctl.signal, redirect: 'follow', headers: { 'User-Agent': UA, Accept: 'text/html' } });
     if (!r.ok || !/html/i.test(r.headers.get('content-type') || '')) return '';
-    return pickImage(await r.text(), r.url || url);
+    return pickImage(await readText(r), r.url || url);
   } catch { return ''; } finally { clearTimeout(t); }
 }
 

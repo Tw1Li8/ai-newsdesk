@@ -1,0 +1,44 @@
+# 3시간마다 수집·번역·요약을 돌려 정적 사이트를 만들고 GitHub Pages 로 배포합니다.
+# 사용: 이 폴더(ai-newsdesk)를 별도 GitHub 저장소 루트로 올리고, Settings → Pages → Source 를 "GitHub Actions" 로 지정.
+name: site
+on:
+  schedule:
+    - cron: '17 */3 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 이전 수집 데이터 복원 (번역·요약 재사용)
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: newsdesk-data-${{ github.run_id }}
+          restore-keys: newsdesk-data-
+      - run: node build-site.js
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

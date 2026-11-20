@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 뉴스데스크</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="live"></span><b>AI 뉴스데스크</b></div>
+  <input id="q" type="search" placeholder="검색 (한글·영문 모두)" autocomplete="off">
+  <div class="seg" id="lang" role="group" aria-label="언어">
+    <button data-v="all" class="on">전체</button><button data-v="ko">국내</button><button data-v="en">해외</button>
+  </div>
+  <select id="days" aria-label="기간">
+    <option value="1">24시간</option><option value="3">3일</option><option value="7" selected>7일</option><option value="30">30일</option><option value="0">전체</option>
+  </select>
+  <label class="chk"><input type="checkbox" id="orig" checked> 원문 병기</label>
+  <span class="grow"></span>
+  <small id="clock"></small>
+  <button id="refresh" class="primary">⟳ 지금 업데이트</button>
+  <button id="theme" title="테마 전환" aria-label="테마 전환">◐</button>
+</header>
+<div id="progress" hidden><div></div><span></span></div>
+<div class="ticker" id="ticker" aria-label="속보"></div>
+<nav class="tabs" id="tabs"></nav>
+<main id="main"></main>
+<script src="app.js"></script>
+</body>
+</html>

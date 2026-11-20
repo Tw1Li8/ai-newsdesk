@@ -1,0 +1,11 @@
+{
+  "name": "ai-newsdesk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI 뉴스데스크 — 로컬 AI 소식 대시보드 (의존성 없음, Node 18+)",
+  "scripts": {
+    "start": "node server.js",
+    "lan": "node -e \"process.env.HOST='0.0.0.0';require('./server.js')\""
+  },
+  "engines": { "node": ">=18" }
+}

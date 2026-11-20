@@ -230,3 +230,9 @@ details.orig summary{cursor:pointer;color:var(--accent);font-size:13.5px;margin-
 .gm .rk{left:10px;top:10px}
 .gc.big .rk{min-width:34px;height:34px;font-size:16px;border-radius:17px}
 .trend{margin-bottom:22px}
+
+/* 찜하기(♥) */
+.gh{position:absolute;right:8px;top:48px;width:34px;height:34px;border-radius:50%;padding:0;border:0;background:rgba(17,24,39,.7);color:#fff;font-size:18px;opacity:0;transition:opacity .15s}
+.gc:hover .gh,.gh.on,.gh:focus-visible{opacity:1}.gh.on{color:#f43f5e}
+@media(hover:none){.gh{opacity:1}}
+.mini.heart.on,.row2 button.heart.on{color:#f43f5e}

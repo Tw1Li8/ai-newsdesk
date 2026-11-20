@@ -20,7 +20,7 @@ const store = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } ca
 
 const CATS = [['industry', '업계 판도'], ['creations', 'AI 결과물·사례'], ['community', '커뮤니티·SNS'], ['video', '영상'], ['research', '연구·논문']];
 const CAT_NAME = { ...Object.fromEntries(CATS), eng: 'AI 엔지니어링·에이전트 활용' };
-const state = { view: 'board', cat: null, topic: '', learnOnly: false, lang: 'all', days: 7, q: '', showOrig: store.get('orig', '1') === '1', board: {}, list: { items: [], total: 0 }, shown: 60, nav: [], sort: 'rank', top: [], counts: {}, all: 0, h24: 0, study: {} };
+const state = { view: 'board', cat: null, topic: '', fav: {}, learnOnly: false, lang: 'all', days: 7, q: '', showOrig: store.get('orig', '1') === '1', board: {}, list: { items: [], total: 0 }, shown: 60, nav: [], sort: 'rank', top: [], counts: {}, all: 0, h24: 0, study: {} };
 
 // ───── 번역 표시 헬퍼
 const isTr = (it) => it.lang === 'en' && it.titleKo && it.titleKo !== it.title;
@@ -74,10 +74,11 @@ function toast(msg) { const t = h('div', { class: 'toast', text: msg }); documen
 
 // ───── 데이터 로딩
 const qs = (o) => new URLSearchParams(o).toString();
+async function loadFav() { const s = await api('/api/fav'); state.fav = Object.fromEntries(s.fav.map((e) => [e.id, e])); }
 async function loadStudy() { const s = await api('/api/study'); state.study = Object.fromEntries(s.study.map((e) => [e.id, e])); }
 async function load() {
   const base = { lang: state.lang, days: state.days, q: state.q };
-  await loadStudy();
+  await Promise.all([loadStudy(), loadFav()]);
   if (state.view === 'board') {
     const [topRes, ...res] = await Promise.all([api('/api/items?' + qs({ ...base, cat: 'all', limit: 30, sort: 'rank' })), ...CATS.map(([k]) => api('/api/items?' + qs({ ...base, cat: k, limit: 40, sort: 'rank' })))]);
     state.top = topRes.items;
@@ -101,6 +102,12 @@ async function loadTicker() {
 }
 
 // ───── 카드 (보드/리스트 공용)
+async function toggleFav(it, btn) {
+  if (state.fav[it.id]) { await api('/api/fav/' + encodeURIComponent(it.id), { method: 'DELETE' }); delete state.fav[it.id]; toast('찜 목록에서 뺐습니다'); }
+  else { const r = await post('/api/fav', { id: it.id }); if (r.entry) { state.fav[it.id] = r.entry; toast('♥ 찜했습니다 — 업데이트돼도 “찜한 글”에서 다시 볼 수 있어요'); } else { toast(r.error || '찜하지 못했습니다'); return; } }
+  if (btn) { btn.classList.toggle('on', !!state.fav[it.id]); btn.textContent = state.fav[it.id] ? '♥' : '♡'; }
+  renderTabs();
+}
 async function toggleStudy(it, btn) {
   if (state.study[it.id]) { await api('/api/study/' + encodeURIComponent(it.id), { method: 'DELETE' }); delete state.study[it.id]; toast('스터디 보드에서 뺐습니다'); }
   else { const r = await post('/api/study', { id: it.id }); if (r.entry) { state.study[it.id] = r.entry; toast('스터디 보드에 담았습니다'); } }
@@ -134,6 +141,7 @@ function actions(it) {
   return h('div', { class: 'ac' },
     h('a', { class: 'src', href: safeUrl(it.url), target: '_blank', rel: 'noopener noreferrer', title: it.url, text: '원문 ↗ ' + displayUrl(it.url) }),
     h('button', { class: 'mini', title: '원문 주소 복사', onclick: copy }, '⧉'),
+    h('button', { class: 'mini heart' + (state.fav[it.id] ? ' on' : ''), title: '찜하기', onclick: (e) => toggleFav(it, e.currentTarget) }, state.fav[it.id] ? '♥' : '♡'),
     h('button', { class: 'mini' + (state.study[it.id] ? ' on' : ''), title: '스터디 보드에 담기', onclick: (e) => toggleStudy(it, e.currentTarget) }, state.study[it.id] ? '★' : '☆'));
 }
 function card(it, { rank = 0, summary = false } = {}) {
@@ -171,8 +179,9 @@ function gcard(it, { big = false, rank = 0, lede = false } = {}) {
   if (rank) img.append(h('span', { class: 'rk', text: rank }));
   const star = h('button', { class: 'gs' + (saved ? ' on' : ''), title: '스터디 보드에 담기', onclick: (e) => { e.stopPropagation(); toggleStudy(it, e.currentTarget); } }, saved ? '★' : '☆');
   const sm = lede ? summaryOf(it) : '';
+  const heart = h('button', { class: 'gh' + (state.fav[it.id] ? ' on' : ''), title: '찜하기 (나중에 다시 보기)', onclick: (e) => { e.stopPropagation(); toggleFav(it, e.currentTarget); } }, state.fav[it.id] ? '♥' : '♡');
   return h('article', { class: 'gc' + (big ? ' big' : '') },
-    h('div', { class: 'gm' }, img, star),
+    h('div', { class: 'gm' }, img, star, heart),
     h('h3', { class: 'gt' }, h('a', { href: safeUrl(it.url), onclick: openIt(it), text: titleOf(it) })),
     state.showOrig && isTr(it) ? h('div', { class: 'go1', text: it.title }) : null,
     sm && sm.slice(0, 20) !== titleOf(it).slice(0, 20) ? h('p', { class: 'gl', text: sm }) : null,
@@ -248,6 +257,8 @@ function openDetail(it) {
   const copy = async () => { try { await navigator.clipboard.writeText(it.url); toast('원문 주소를 복사했습니다'); } catch { toast('복사 실패'); } };
   const starLabel = () => (state.study[it.id] ? '★ 스터디에 담김' : '☆ 스터디에 담기');
   const starBtn = h('button', { class: state.study[it.id] ? 'on' : '', onclick: async (e) => { const b = e.currentTarget; await toggleStudy(it, b); b.textContent = starLabel(); b.classList.toggle('on', !!state.study[it.id]); } }, starLabel());
+  const favLabel = () => (state.fav[it.id] ? '♥ 찜함' : '♡ 찜하기');
+  const favBtn = h('button', { class: 'heart' + (state.fav[it.id] ? ' on' : ''), onclick: async (e) => { const b = e.currentTarget; await toggleFav(it, null); b.textContent = favLabel(); b.classList.toggle('on', !!state.fav[it.id]); } }, favLabel());
   const modal = h('div', { id: 'modal', class: 'modal', onclick: (e) => { if (e.target.id === 'modal') closeDetail(); } },
     h('div', { class: 'dp', role: 'dialog', 'aria-modal': 'true', 'aria-label': titleOf(it) },
       h('div', { class: 'dbar' },
@@ -264,7 +275,7 @@ function openDetail(it) {
         h('div', { class: 'aby' }, h('span', { text: new Date(it.published).toLocaleString('ko-KR', { dateStyle: 'long', timeStyle: 'short' }) }), h('span', { text: '(' + ago(it.published) + ')' }),
           h('span', { class: 'tag', text: it.lang === 'ko' ? '국내 보도' : isTr(it) ? '해외 보도 · 한글 번역' : '해외 보도' })),
         fig, body,
-        h('div', { class: 'row2' }, starBtn, h('button', { onclick: copy }, '⧉ 주소 복사'))),
+        h('div', { class: 'row2' }, favBtn, starBtn, h('button', { onclick: copy }, '⧉ 주소 복사'))),
       h('footer', { class: 'dfoot' },
         h('div', { class: 'meta', text: '이 화면은 원문에서 핵심 문장을 자동 선별한 요약입니다. 전체 기사는 원문에서 확인하세요.' }),
         h('a', { class: 'go', href: safeUrl(it.url), target: '_blank', rel: 'noopener noreferrer' }, '원문 기사 전체 읽기 ↗'),
@@ -290,6 +301,27 @@ function openDetail(it) {
 }
 document.addEventListener('keydown', (e) => { const m = $('#modal'); if (m) m._key(e); });
 
+
+// ───── 화면: 찜한 글 (업데이트로 목록에서 밀려나도 보관됨 · 백업/복원 가능)
+function renderFav() {
+  const main = $('#main'); main.replaceChildren(); state.nav = [];
+  const list = Object.values(state.fav).sort((a, b) => b.savedAt - a.savedAt);
+  const exportFav = async () => {
+    const d = await api('/api/fav'); const blob = new Blob([JSON.stringify({ app: 'ai-newsdesk', fav: d.fav }, null, 1)], { type: 'application/json' });
+    const a = h('a', { href: URL.createObjectURL(blob), download: 'newsdesk-favorites-' + new Date().toISOString().slice(0, 10) + '.json' }); document.body.append(a); a.click(); a.remove();
+  };
+  const file = h('input', { type: 'file', accept: 'application/json,.json', hidden: true, onchange: async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try { const j = JSON.parse(await f.text()); const r = await post('/api/fav/import', { fav: j.fav }); toast(r.added + '건을 가져왔습니다'); await loadFav(); renderTabs(); renderFav(); } catch { toast('가져오기 실패: 올바른 백업 파일이 아닙니다'); }
+  } });
+  main.append(h('div', { class: 'bar' }, h('span', { class: 'meta', text: list.length + '건 · 찜한 글은 업데이트돼도 그대로 남습니다' }),
+    h('div', { class: 'seg' }, h('button', { onclick: exportFav }, '⬇ 백업 저장'), h('button', { onclick: () => file.click() }, '⬆ 가져오기'), file)));
+  if (!list.length) { main.append(h('div', { class: 'empty', text: '아직 찜한 글이 없습니다. 카드 오른쪽 위의 ♡ 를 눌러 담아 보세요. (스터디 보드는 ★ — 공부할 글 관리용)' })); return; }
+  const grid = h('div', { class: 'gg' });
+  list.forEach((e) => grid.append(gcard(e.item, { lede: true })));
+  main.append(grid);
+  if (window.__staticSite) main.append(h('p', { class: 'meta', text: '※ 이 사이트의 찜 목록은 지금 쓰는 브라우저에 저장됩니다. 다른 기기에서 보려면 “백업 저장” → 그 기기에서 “가져오기”.' }));
+}
 
 // ───── 화면: 스터디
 function renderStudy() {
@@ -360,12 +392,13 @@ function renderTabs() {
   add('전체 목록', state.all || 0, state.view === 'list' && !state.learnOnly && !state.topic && !state.cat, () => go('list', null));
   add('🛠 AI 엔지니어링·에이전트', state.counts.eng || 0, state.view === 'list' && state.topic === 'eng', () => go('list', null, false, 'eng'));
   add('📘 배울 거리', null, state.view === 'list' && state.learnOnly, () => go('list', null, true));
+  add('♥ 찜한 글', Object.keys(state.fav).length, state.view === 'fav', () => go('fav'));
   add('★ 스터디 보드', Object.keys(state.study).length, state.view === 'study', () => go('study'));
   if (!window.__staticSite) add('⚙ 소스·설정', null, state.view === 'sources', () => go('sources'));
 }
 function render() {
   renderTabs();
-  ({ board: renderBoard, list: renderList, study: renderStudy, sources: renderSources })[state.view]();
+  ({ board: renderBoard, list: renderList, fav: renderFav, study: renderStudy, sources: renderSources })[state.view]();
 }
 
 // ───── 업데이트

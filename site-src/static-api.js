@@ -5,7 +5,7 @@
   const data = () => dataP || (dataP = fetch('data.json').then((r) => r.json()));
   const digs = () => digP || (digP = fetch('digests.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
   const ls = { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
-  const ROWS = 'nd-study';
+  const ROWS = 'nd-study', FAV = 'nd-fav';
 
   async function items(q) {
     const d = await data();
@@ -24,7 +24,9 @@
   async function digest(id) {
     const [d, g] = await Promise.all([data(), digs()]);
     if (g[id]) return g[id];
-    const it = d.items.find((x) => x.id === id) || (ls.get(ROWS, {})[id] || {}).item;
+    const fv = ls.get(FAV, {})[id];
+    if (fv && fv.digest) return fv.digest; // 찜할 때 저장해 둔 요약
+    const it = d.items.find((x) => x.id === id) || (ls.get(ROWS, {})[id] || {}).item || (fv && fv.item);
     if (!it) return { points: [], pointsOrig: [], translated: false, note: '항목을 찾을 수 없습니다.' };
     const text = it.summaryKo || it.summary || '';
     return { points: text ? [text] : [], pointsOrig: [], translated: !!it.summaryKo, from: 'feed', image: '',
@@ -46,12 +48,34 @@
     rows[id] = cur; ls.set(ROWS, rows); return { ok: true, entry: cur };
   }
 
+  async function fav(method, path, body) {
+    const rows = ls.get(FAV, {});
+    if (method === 'GET') return { fav: Object.values(rows).sort((a, b) => b.savedAt - a.savedAt).map(({ id, savedAt, item }) => ({ id, savedAt, item })) };
+    if (method === 'DELETE') { delete rows[decodeURIComponent(path.slice(9))]; ls.set(FAV, rows); return { ok: true }; }
+    if (path === '/api/fav/import') {
+      let n = 0;
+      for (const e of (Array.isArray(body.fav) ? body.fav : []).slice(0, 5000)) {
+        if (!e || typeof e.id !== 'string' || !e.item || typeof e.item.url !== 'string' || rows[e.id]) continue;
+        rows[e.id] = { id: e.id, savedAt: +e.savedAt || Date.now(), item: e.item, digest: e.digest || null }; n++;
+      }
+      ls.set(FAV, rows); return { ok: true, added: n };
+    }
+    const id = String(body.id || ''); if (!id) return { error: 'id 필요' };
+    if (!rows[id]) {
+      const [d, g] = await Promise.all([data(), digs()]);
+      const it = d.items.find((x) => x.id === id); if (!it) return { error: '항목 없음' };
+      rows[id] = { id, savedAt: Date.now(), item: it, digest: g[id] || null };
+    }
+    ls.set(FAV, rows); const { savedAt, item } = rows[id]; return { ok: true, entry: { id, savedAt, item } };
+  }
+
   window.__staticApi = async (p, opt = {}) => {
     const method = (opt.method || 'GET').toUpperCase();
     const u = new URL(p, 'http://x');
     if (u.pathname === '/api/items') return items(u.searchParams);
     if (u.pathname === '/api/digest') return digest(u.searchParams.get('id') || '');
     if (u.pathname === '/api/status') { const d = await data(); return { running: false, updatedAt: d.updatedAt, results: [], added: 0 }; }
+    if (u.pathname === '/api/fav' || u.pathname.startsWith('/api/fav/')) return fav(method, u.pathname, opt.body ? JSON.parse(opt.body) : {});
     if (u.pathname === '/api/study' || u.pathname.startsWith('/api/study/')) return study(method, u.pathname, opt.body ? JSON.parse(opt.body) : {});
     return { error: '정적 사이트에서는 지원하지 않는 기능입니다' };
   };

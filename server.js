@@ -23,6 +23,7 @@ function save(n, v) { const tmp = file(n) + '.tmp'; fs.writeFileSync(tmp, JSON.s
 
 let store = load('items.json', { items: {}, updatedAt: 0 });
 let study = load('study.json', {});
+let fav = load('fav.json', {}); // 찜한 글: 기사 스냅샷(+요약)을 따로 보관해 업데이트로 목록에서 밀려나도 다시 볼 수 있음
 let config = Object.assign({ intervalMin: 30, disabled: [], custom: [] }, load('config.json', {}));
 let status = { running: false, done: 0, total: 0, startedAt: 0, finishedAt: store.updatedAt || 0, results: [], added: 0 };
 
@@ -97,7 +98,7 @@ const server = http.createServer(async (req, res) => {
         items: list.slice(0, limit).map(({ nurl, ntitle, digest, ...rest }) => rest) });
     }
     if (p === '/api/digest') {
-      const id = u.searchParams.get('id') || ''; const it = store.items[id] || (study[id] && study[id].item);
+      const id = u.searchParams.get('id') || ''; const it = store.items[id] || (study[id] && study[id].item) || (fav[id] && fav[id].item);
       if (!it) return json(res, 404, { error: '항목 없음' });
       if (it.digest && it.digest.v === 4 && Date.now() - it.digest.at < 7 * 864e5) return json(res, 200, it.digest);
       const job = async () => {
@@ -148,6 +149,24 @@ const server = http.createServer(async (req, res) => {
       save('config.json', config);
       return json(res, 200, { ok: true });
     }
+    if (p === '/api/fav' && req.method === 'GET') return json(res, 200, { fav: Object.values(fav).sort((a, b) => b.savedAt - a.savedAt).map((e) => ({ id: e.id, savedAt: e.savedAt, item: (({ nurl, ntitle, digest, ...r }) => r)(e.item) })) });
+    if (p === '/api/fav' && req.method === 'POST') {
+      const b = await body(req); const id = String(b.id || ''); if (!id) return json(res, 400, { error: 'id 필요' });
+      if (!fav[id]) {
+        const it = store.items[id] || (study[id] && study[id].item); if (!it) return json(res, 404, { error: '항목 없음' });
+        fav[id] = { id, savedAt: Date.now(), item: { ...it } };
+      }
+      save('fav.json', fav); return json(res, 200, { ok: true, entry: { id, savedAt: fav[id].savedAt, item: (({ nurl, ntitle, digest, ...r }) => r)(fav[id].item) } });
+    }
+    if (p === '/api/fav/import' && req.method === 'POST') { // 백업 파일 가져오기(병합)
+      const b = await body(req); let n = 0;
+      for (const e of (Array.isArray(b.fav) ? b.fav : []).slice(0, 5000)) {
+        if (!e || typeof e.id !== 'string' || !e.item || typeof e.item.url !== 'string' || fav[e.id]) continue;
+        fav[e.id] = { id: e.id, savedAt: +e.savedAt || Date.now(), item: e.item }; n++;
+      }
+      save('fav.json', fav); return json(res, 200, { ok: true, added: n });
+    }
+    if (p.startsWith('/api/fav/') && req.method === 'DELETE') { delete fav[decodeURIComponent(p.slice(9))]; save('fav.json', fav); return json(res, 200, { ok: true }); }
     if (p === '/api/study' && req.method === 'GET') return json(res, 200, { study: Object.values(study).sort((a, b) => b.addedAt - a.addedAt) });
     if (p === '/api/study' && req.method === 'POST') {
       const b = await body(req); const id = String(b.id || '');

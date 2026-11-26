@@ -27,7 +27,7 @@ AI 업계 뉴스·블로그·결과물 사례를 한 화면에 모으는 로컬 
 - 이미지는 RSS에 있으면 사용하고, 없으면 기사 페이지의 대표 이미지(og:image)를 업데이트 때 상위 기사부터 가져옵니다(`enrich.js`). 구글뉴스 경유 기사는 실제 주소를 알 수 없어 출처 색상 타일로 대신 표시합니다.
 
 ## 인터넷 사이트로 공개 (GitHub Pages)
-`node build-site.js` 가 수집·번역·상위 기사 요약을 돌려 `site/`(정적 HTML+JSON)를 만들고, `.github/workflows/site.yml` 이 3시간마다 자동 실행해 GitHub Pages 로 배포합니다.
+`node build-site.js` 가 수집·번역·상위 기사 요약을 돌려 `site/`(정적 HTML+JSON)를 만들고, `.github/workflows/site.yml` 이 1시간마다 자동 실행해(GitHub 예약 실행은 밀리거나 빠질 수 있음) GitHub Pages 로 배포합니다.
 - 이 폴더를 **별도 저장소의 루트**로 올리고 Settings → Pages → Source 를 “GitHub Actions” 로 지정.
 - 사이트판 차이: “지금 업데이트”·소스 설정은 없음(서버가 자동 갱신), 스터디 보드는 **보는 브라우저(localStorage)** 에 저장, 핵심 요약은 상위 약 120건만 미리 생성(나머지는 요약문+원문 링크).
 - 로컬 점검: `node build-site.js --no-collect` 후 `site/` 를 아무 정적 서버로 열기.

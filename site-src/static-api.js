@@ -1,9 +1,22 @@
 // 정적 사이트용 어댑터: 서버(/api/...) 대신 미리 만들어 둔 data.json / digests.json 으로 같은 응답을 만들어 줍니다.
 // app.js 는 window.__staticApi 가 있으면 fetch 대신 이것을 호출합니다. 스터디 보드는 이 브라우저의 localStorage 에 저장됩니다.
 (() => {
-  let dataP, digP;
-  const data = () => dataP || (dataP = fetch('data.json').then((r) => r.json()));
-  const digs = () => digP || (digP = fetch('digests.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+  // 열어 둔 탭도 새 빌드를 받도록 TTL 이 지나면 다시 받습니다(화면 자동 갱신 5분보다 짧게). 실패하면 직전 데이터를 씁니다.
+  const TTL = 4 * 60e3;
+  const cached = (url) => {
+    let p, at = 0, last;
+    return () => {
+      if (p && Date.now() - at < TTL) return p;
+      at = Date.now();
+      return (p = fetch(url, { cache: 'no-cache' })
+        .then((r) => { if (!r.ok) throw new Error(url + ' ' + r.status); return r.json(); })
+        .then((v) => (last = v))
+        .catch((e) => { at = 0; if (last) return last; p = null; throw e; }));
+    };
+  };
+  const data = cached('data.json');
+  const digestFile = cached('digests.json');
+  const digs = () => digestFile().catch(() => ({}));
   const ls = { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
   const ROWS = 'nd-study', FAV = 'nd-fav';
 

@@ -1,9 +1,9 @@
-# 3시간마다 수집·번역·요약을 돌려 정적 사이트를 만들고 GitHub Pages 로 배포합니다.
+# 1시간마다(GitHub 예약 실행은 밀리거나 빠질 수 있음) 수집·번역·요약을 돌려 정적 사이트를 만들고 GitHub Pages 로 배포합니다.
 # 사용: 이 폴더(ai-newsdesk)를 별도 GitHub 저장소 루트로 올리고, Settings → Pages → Source 를 "GitHub Actions" 로 지정.
 name: site
 on:
   schedule:
-    - cron: '17 */3 * * *'
+    - cron: '17 * * * *'
   workflow_dispatch:
   push:
     branches: [main]

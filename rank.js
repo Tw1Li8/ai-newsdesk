@@ -1,7 +1,7 @@
 // 중요도 점수 = 출처 신뢰도 + 주제 가중치 + 여러 매체 동시 보도(클러스터) + 커뮤니티 반응 + 최신성(조회 시 계산) + 이미지 보너스(조회 시)
-const AI_RE = /\bAI\b|A\.I|GPT|LLM|인공지능|생성형|챗봇|딥러닝|machine learning|agent|에이전트|robot|로봇|엔비디아|nvidia|claude|gemini|openai|anthropic|diffusion|copilot|midjourney|sora|llama|모델|chatbot|neural|데이터센터|반도체/i;
+const AI_RE = /\bAI\b|A\.I|GPT|LLM|인공지능|생성형|챗봇|딥러닝|machine learning|agent|에이전트|robot|로봇|엔비디아|nvidia|claude|gemini|openai|anthropic|diffusion|copilot|midjourney|sora|llama|모델|chatbot|neural|자율주행|self-driving|autonomous|휴머노이드|humanoid|\bFSD\b|데이터센터|반도체/i;
 const EVENT_RE = /규제|법안|소송|투자|인수|상장|출시|공개|launch|release|acquire|lawsuit|regulation|funding|billion|ipo|조\s?원|억\s?달러/i;
-const TOPIC_RE = /openai|anthropic|claude|gemini|gpt-?\d|chatgpt|nvidia|엔비디아|deepseek|llama|meta ai|grok|xai|sora|veo|midjourney|copilot|삼성|네이버|카카오|하이퍼클로바|오픈AI|제미나이|클로드|규제|법안|소송|투자|인수|출시|공개|launch|release|acquire|lawsuit|regulation|funding|billion|조\s?원|억\s?달러/i;
+const TOPIC_RE = /openai|anthropic|claude|gemini|gpt-?\d|chatgpt|nvidia|엔비디아|deepseek|llama|meta ai|grok|xai|sora|veo|midjourney|copilot|삼성|네이버|카카오|하이퍼클로바|오픈AI|제미나이|클로드|규제|법안|소송|투자|인수|출시|공개|launch|release|acquire|lawsuit|regulation|funding|billion|조\s?원|억\s?달러|테슬라|tesla|현대차|자율주행|self-driving|휴머노이드|humanoid|\bFSD\b/i;
 
 function authority(it) {
   const id = it.sourceId;

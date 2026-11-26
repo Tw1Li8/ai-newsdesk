@@ -1,8 +1,10 @@
-// 기본 소스 목록. cat: industry(업계 판도) / creations(AI 결과물·사례) / community / video / research
+// 기본 소스 목록. cat: industry(업계 판도) / corp(기업 성과) / creations(AI 결과물·사례) / community / video / research
 // lang: ko | en. type: rss | hn | html. 사용자 추가 소스는 data/config.json 에 저장됩니다.
 // 뉴스 검색 피드(Bing News RSS): 링크에 실제 기사 주소가 들어 있고 요약·대표 이미지도 함께 옵니다.
 const gn = (q, lang = 'ko') =>
   `https://www.bing.com/news/search?q=${encodeURIComponent(q)}&format=rss&${lang === 'ko' ? 'setmkt=ko-KR&setlang=ko' : 'setmkt=en-US&setlang=en-US'}`;
+
+const FIELDS = require('./fields');
 
 const S = (id, name, url, cat, lang, extra = {}) => ({ id, name, url, cat, lang, type: 'rss', ...extra });
 
@@ -54,6 +56,12 @@ module.exports = [
   S('gn-threads', '쓰레드 화제 AI', gn('site:threads.net AI', 'en'), 'community', 'en'),
   S('gn-insta', '인스타그램 화제 AI', gn('site:instagram.com AI', 'en'), 'community', 'en'),
   S('gn-ko-sns', '뉴스(KR): SNS 화제 AI', gn('AI 화제 SNS', 'ko'), 'community', 'ko'),
+
+  // ── 기업 성과: 검색어는 fields.js 에서 관리
+  ...FIELDS.flatMap(([id, name, ko, en]) => [
+    ...ko.map((q, n) => S(`gn-ko-corp-${id}-${n + 1}`, `뉴스(KR): ${name} ${n + 1}`, gn(q, 'ko'), 'corp', 'ko', { field: name })),
+    ...en.map((q, n) => S(`gn-corp-${id}-${n + 1}`, `뉴스: ${name} ${n + 1}`, gn(q, 'en'), 'corp', 'en', { field: name })),
+  ]),
 
   // ── 업계 판도: 한국 (네이버·다음 배포 기사는 구글뉴스 경유로도 수집)
   S('aitimes', 'AI타임스', 'https://www.aitimes.com/rss/allArticle.xml', 'industry', 'ko'),

@@ -154,7 +154,11 @@ async function collectAll(sources, store, onProgress) {
     let n = 0;
     for (const x of r.items) {
       const nurl = normUrl(x.url), ntitle = normTitle(x.title);
-      if (urlSeen.has(nurl) || (ntitle.length > 12 && titleSeen.has(ntitle))) continue;
+      const dup = urlSeen.get(nurl) || (ntitle.length > 12 ? titleSeen.get(ntitle) : undefined);
+      if (dup) { // 같은 기사가 업계 뉴스로 먼저 들어와도 기업 성과 검색에 걸리면 기업 성과로 분류
+        const old = store.items[dup]; if (old && old.cat === 'industry' && r.src.cat === 'corp') old.cat = 'corp';
+        continue;
+      }
       const id = hash(nurl);
       store.items[id] = { id, title: x.title, url: x.url, summary: x.summary, image: x.image, published: Math.min(x.published, Date.now()), source: x.source,
         sourceId: r.src.id, cat: r.src.cat, lang: r.src.lang, score: x.score || 0, seen: Date.now(), nurl, ntitle };

@@ -140,7 +140,7 @@ const server = http.createServer(async (req, res) => {
       else if (b.action === 'add') {
         let url; try { url = new URL(b.url); if (!/^https?:$/.test(url.protocol)) throw 0; } catch { return json(res, 400, { error: '올바른 http(s) 주소가 아닙니다' }); }
         const id = 'c-' + Math.random().toString(36).slice(2, 8);
-        const s = { id, name: String(b.name || url.host).slice(0, 60), url: url.href, cat: ['industry', 'creations', 'community', 'video', 'research'].includes(b.cat) ? b.cat : 'industry', lang: b.lang === 'en' ? 'en' : 'ko', type: 'rss' };
+        const s = { id, name: String(b.name || url.host).slice(0, 60), url: url.href, cat: ['industry', 'corp', 'creations', 'community', 'video', 'research'].includes(b.cat) ? b.cat : 'industry', lang: b.lang === 'en' ? 'en' : 'ko', type: 'rss' };
         const probe = await collectOne(s);
         if (!probe.ok) return json(res, 400, { error: '이 주소에서 피드를 읽지 못했습니다: ' + probe.error });
         config.custom.push(s);

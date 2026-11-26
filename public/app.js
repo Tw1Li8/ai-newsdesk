@@ -18,7 +18,7 @@ const api = (p, opt) => (window.__staticApi ? window.__staticApi(p, opt) : fetch
 const post = (p, b) => api(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
 const store = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 
-const CATS = [['industry', '업계 판도'], ['creations', 'AI 결과물·사례'], ['community', '커뮤니티·SNS'], ['video', '영상'], ['research', '연구·논문']];
+const CATS = [['industry', '업계 판도'], ['corp', '기업 성과'], ['creations', 'AI 결과물·사례'], ['community', '커뮤니티·SNS'], ['video', '영상'], ['research', '연구·논문']];
 const CAT_NAME = { ...Object.fromEntries(CATS), eng: 'AI 엔지니어링·에이전트 활용' };
 const state = { view: 'board', cat: null, topic: '', fav: {}, learnOnly: false, lang: 'all', days: 7, q: '', showOrig: store.get('orig', '1') === '1', board: {}, list: { items: [], total: 0 }, shown: 60, nav: [], sort: 'rank', top: [], counts: {}, all: 0, h24: 0, study: {} };
 
@@ -116,7 +116,7 @@ async function toggleStudy(it, btn) {
 }
 const openIt = (it) => (e) => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return; e.preventDefault(); openDetail(it); };
 const hue = (s) => { let x = 0; for (const c of s) x = (x * 31 + c.charCodeAt(0)) % 360; return x; };
-const CAT_ICON = { eng: '🛠', industry: '🏢', creations: '🎨', community: '💬', video: '▶', research: '🔬' };
+const CAT_ICON = { eng: '🛠', industry: '🏢', corp: '🚀', creations: '🎨', community: '💬', video: '▶', research: '🔬' };
 function media(it, rank) {
   const hv = hue(it.source);
   const tile = h('div', { class: 'tile', style: `--h:${hv}` }, h('span', { class: 'ic', text: CAT_ICON[it.cat] || '•' }), h('b', { text: it.source }));
@@ -209,7 +209,8 @@ function renderBoard() {
   const used = new Set();
   if (lead) {
     used.add(lead.id);
-    const rest = top.filter((x) => x !== lead).slice(0, 8); // 큰 카드(4칸) + 8장 = 3줄이 꽉 참 rest.forEach((x) => used.add(x.id));
+    const rest = top.filter((x) => x !== lead).slice(0, 8); // 큰 카드(4칸) + 8장 = 3줄이 꽉 참
+    rest.forEach((x) => used.add(x.id));
     const grid = h('div', { class: 'gg' }, gcard(lead, { big: true, rank: 1 }), rest.map((it, i) => gcard(it, { rank: i + 2 })));
     main.append(h('section', { class: 'gsec front' }, h('header', {}, h('h2', { text: '⭐ 주요 뉴스' }), h('small', { text: '중요도 순 · 업데이트 ' }), h('small', { id: 'upd', text: '—' })), grid));
     api('/api/status').then((s) => { const e = $('#upd'); if (e && s.updatedAt) e.textContent = ago(s.updatedAt); });
@@ -386,15 +387,28 @@ async function renderSources() {
 function go(view, cat, learn = false, topic = '') { state.view = view; state.cat = cat; state.learnOnly = learn; state.topic = topic; state.shown = 60; if (view !== 'list' && view !== 'board') { render(); return; } load(); }
 function renderTabs() {
   const tabs = $('#tabs'); tabs.replaceChildren();
-  const add = (label, n, on, fn) => tabs.append(h('button', { class: on ? 'on' : '', onclick: fn }, label, n != null ? h('span', { class: 'n', text: n }) : null));
-  add('📺 한눈에 보기', null, state.view === 'board', () => { $('#q').value = ''; state.q = ''; go('board', null); });
-  for (const [k, l] of CATS) add(l, state.counts[k] || 0, state.view === 'list' && !state.learnOnly && !state.topic && state.cat === k, () => go('list', k));
-  add('전체 목록', state.all || 0, state.view === 'list' && !state.learnOnly && !state.topic && !state.cat, () => go('list', null));
-  add('🛠 AI 엔지니어링·에이전트', state.counts.eng || 0, state.view === 'list' && state.topic === 'eng', () => go('list', null, false, 'eng'));
-  add('📘 배울 거리', null, state.view === 'list' && state.learnOnly, () => go('list', null, true));
-  add('♥ 찜한 글', Object.keys(state.fav).length, state.view === 'fav', () => go('fav'));
-  add('★ 스터디 보드', Object.keys(state.study).length, state.view === 'study', () => go('study'));
-  if (!window.__staticSite) add('⚙ 소스·설정', null, state.view === 'sources', () => go('sources'));
+  const v = state.view, list = v === 'list', plain = list && !state.learnOnly && !state.topic;
+  const nFav = Object.keys(state.fav).length, nStudy = Object.keys(state.study).length;
+  const home = () => { $('#q').value = ''; state.q = ''; go('board', null); };
+  // [이름, 개수, 선택 여부, 누르면, 하위 보기]. 겹치는 화면은 한 탭의 하위 보기로 묶습니다.
+  const groups = [
+    ['📺 전체', null, v === 'board' || (plain && !state.cat), home, [
+      ['한눈에 보기', null, v === 'board', home],
+      ['전체 목록', state.all || 0, plain && !state.cat, () => go('list', null)]]],
+    ...CATS.map(([k, l]) => [l, state.counts[k] || 0, plain && state.cat === k, () => go('list', k)]),
+    ['📘 배우기', null, list && (state.learnOnly || state.topic === 'eng'), () => go('list', null, false, 'eng'), [
+      ['🛠 AI 엔지니어링·에이전트', state.counts.eng || 0, list && state.topic === 'eng', () => go('list', null, false, 'eng')],
+      ['배울 거리', null, list && state.learnOnly, () => go('list', null, true)]]],
+    ['🗂 보관함', nFav + nStudy, v === 'fav' || v === 'study', () => go('fav'), [
+      ['♥ 찜한 글', nFav, v === 'fav', () => go('fav')],
+      ['★ 스터디 보드', nStudy, v === 'study', () => go('study')]]],
+  ];
+  if (!window.__staticSite) groups.push(['⚙ 소스·설정', null, v === 'sources', () => go('sources')]);
+  const button = ([label, n, on, fn]) => h('button', { class: on ? 'on' : '', onclick: fn }, label, n != null ? h('span', { class: 'n', text: n }) : null);
+  for (const g of groups) tabs.append(button(g));
+  const old = $('#subtabs'); if (old) old.remove();
+  const subs = groups.find((g) => g[2] && g[4]);
+  if (subs) tabs.after(h('div', { id: 'subtabs', class: 'subtabs' }, h('div', { class: 'seg' }, subs[4].map(button))));
 }
 function render() {
   renderTabs();

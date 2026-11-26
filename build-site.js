@@ -17,7 +17,7 @@ const DATA = path.join(ROOT, 'data');
 const OUT = path.join(ROOT, 'site');
 const NO_COLLECT = process.argv.includes('--no-collect');
 const DAYS = 14;          // 사이트에 싣는 기간
-const DIGEST_MAX = 120;   // 미리 요약을 만들어 둘 상위 기사 수
+const DIGEST_MAX = 180;   // 미리 요약을 만들어 둘 상위 기사 수
 
 fs.mkdirSync(DATA, { recursive: true });
 let store; try { store = JSON.parse(fs.readFileSync(path.join(DATA, 'items.json'), 'utf8')); } catch { store = { items: {}, updatedAt: 0 }; }
@@ -28,11 +28,23 @@ async function pool(list, n, fn) {
   await Promise.all(Array.from({ length: n }, async () => { while (i < list.length) { const x = list[i++]; try { await fn(x); } catch (e) { log('실패:', String(e.message).slice(0, 80)); } } }));
 }
 
+// 검색어 상태: 실패한 소스를 로그와 GitHub Actions 실행 요약에 남깁니다.
+function report(results) {
+  const bad = results.filter((x) => !x.ok);
+  for (const x of bad) log(`소스 실패: ${x.id} ${x.error}`);
+  if (!process.env.GITHUB_STEP_SUMMARY) return;
+  const rows = [...results].sort((a, b) => a.ok - b.ok || a.id.localeCompare(b.id))
+    .map((x) => `| ${x.ok ? '정상' : '실패'} | ${x.id} | ${x.name} | ${x.count} | ${x.added} | ${x.error || ''} |`);
+  fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, [`## 소스 상태: 성공 ${results.length - bad.length} / ${results.length}`, '',
+    '| 상태 | id | 이름 | 받은 수 | 새 항목 | 오류 |', '|---|---|---|---|---|---|', ...rows, ''].join('\n'));
+}
+
 (async () => {
   if (!NO_COLLECT) {
     log('수집 시작, 소스', SOURCES.length);
     const r = await collectAll(SOURCES, store, () => {});
     log(`수집 완료 +${r.added}건, 소스 성공 ${r.results.filter((x) => x.ok).length}/${r.results.length}`);
+    report(r.results);
     const t = await translateItems(store, {});
     log(`번역 ${t.ok}건 (실패 ${t.fail})`);
     computeRanks(store);
@@ -52,6 +64,7 @@ async function pool(list, n, fn) {
   const pick = new Map();
   const add = (list, n) => list.slice(0, n).forEach((i) => pick.set(i.id, i));
   add(reps, 50);
+  add(reps.filter((i) => i.cat === 'corp'), 40);
   for (const c of ['industry', 'creations', 'community', 'video', 'research']) add(reps.filter((i) => i.cat === c), 12);
   add(reps.filter(isEngineering), 25);
   const targets = [...pick.values()].slice(0, DIGEST_MAX);

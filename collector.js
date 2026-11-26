@@ -95,19 +95,7 @@ function parseHN(json, src) {
   }));
 }
 
-// NAVER API HUB 뉴스 검색 응답. 최신순 검색이라 AI 와 무관한 기사는 제목·요약으로 걸러냅니다.
-function parseNaver(json, src) {
-  const out = [];
-  for (const x of JSON.parse(json).items || []) {
-    const title = strip(x.title), summary = strip(x.description).slice(0, 320), url = httpUrl(x.originallink) || httpUrl(x.link);
-    if (!title || !url || !AI_RE.test(title + ' ' + summary)) continue;
-    const t = Date.parse(x.pubDate);
-    out.push({ title, url, summary, image: '', published: Number.isFinite(t) ? t : Date.now(), source: new URL(url).hostname.replace(/^www\./, '') || src.name });
-  }
-  return out;
-}
-
-// 네이버/다음 검색 결과 HTML: 마크업이 자주 바뀌므로 '뉴스 링크처럼 보이는 앵커'를 느슨하게 추출 (실패해도 다른 소스에 영향 없음)
+// 다음 검색 결과 HTML: 마크업이 자주 바뀌므로 '뉴스 링크처럼 보이는 앵커'를 느슨하게 추출 (실패해도 다른 소스에 영향 없음)
 function parseHTML(html, src) {
   const out = []; const seen = new Set();
   const re = /<a\b[^>]*href=["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
@@ -125,18 +113,11 @@ function parseHTML(html, src) {
   return out.slice(0, 40);
 }
 
-// API 키는 네이버 API 주소로 보내는 요청에만 싣고, 다른 주소로의 이동(redirect)은 따라가지 않습니다.
-function naverAuth(url) {
-  if (new URL(url).origin !== 'https://naverapihub.apigw.ntruss.com') return null;
-  return { 'X-NCP-APIGW-API-KEY-ID': process.env.NAVER_CLIENT_ID || '', 'X-NCP-APIGW-API-KEY': process.env.NAVER_CLIENT_SECRET || '' };
-}
-
 async function fetchText(url, timeoutMs = 20000) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const auth = naverAuth(url);
-    const r = await fetch(url, { signal: ctl.signal, redirect: auth ? 'error' : 'follow', headers: { ...auth, 'User-Agent': UA, Accept: 'application/rss+xml, application/atom+xml, application/xml, application/json, text/html;q=0.8, */*;q=0.5', 'Accept-Language': 'ko,en;q=0.8' } });
+    const r = await fetch(url, { signal: ctl.signal, redirect: 'follow', headers: { 'User-Agent': UA, Accept: 'application/rss+xml, application/atom+xml, application/xml, application/json, text/html;q=0.8, */*;q=0.5', 'Accept-Language': 'ko,en;q=0.8' } });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return await readText(r);
   } finally { clearTimeout(t); }
@@ -146,7 +127,7 @@ async function collectOne(src) {
   const t0 = Date.now();
   try {
     const body = await fetchText(src.url);
-    let items = src.type === 'hn' ? parseHN(body, src) : src.type === 'naver' ? parseNaver(body, src) : src.type === 'html' ? parseHTML(body, src) : parseFeed(body, src);
+    let items = src.type === 'hn' ? parseHN(body, src) : src.type === 'html' ? parseHTML(body, src) : parseFeed(body, src);
     items.sort((a, b) => b.published - a.published);
     items = items.slice(0, src.limit || DEFAULT_LIMIT);
     if (!items.length) throw new Error('항목 0개 (피드 형식 변경/차단 가능)');

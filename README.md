@@ -36,8 +36,3 @@ AI 업계 뉴스·블로그·결과물 사례를 한 화면에 모으는 로컬 
 
 - 기업 성과 검색어는 `fields.js` 의 표에서 분야별로 추가·삭제합니다.
 - 실패한 검색어는 GitHub → Actions → 해당 실행의 요약(Summary) 표에서 확인합니다.
-
-## 네이버 뉴스 API (선택)
-
-- NAVER API HUB 에서 뉴스 검색 Application 을 등록하고, 저장소 Settings → Secrets and variables → Actions 에 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` 을 넣으면 다음 빌드부터 공식 API 를 씁니다.
-- 키가 없으면 기존처럼 검색 화면에서 추출합니다(차단될 수 있음). 키를 코드나 파일에 적지 마세요.

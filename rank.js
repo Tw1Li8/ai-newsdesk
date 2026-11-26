@@ -5,11 +5,11 @@ const TOPIC_RE = /openai|anthropic|claude|gemini|gpt-?\d|chatgpt|nvidia|엔비�
 
 function authority(it) {
   const id = it.sourceId;
-  const table = { openai: 3.5, gblog: 3, deepmind: 3, hf: 2.5, nvidia: 2.5, tc: 3, verge: 3, mit: 3, ars: 3, bair: 2, aitimes: 2.5, 'zdnet-kr': 2.5, geeknews: 2.5, ph: 2, hn: 2, 'hn-show': 1.5, 'naver-news': 2.2, 'daum-news': 2.2, 'arxiv-ai': 1, 'arxiv-cl': 1, 'gn-x': 0.5 };
+  const table = { openai: 3.5, gblog: 3, deepmind: 3, hf: 2.5, nvidia: 2.5, tc: 3, verge: 3, mit: 3, ars: 3, bair: 2, aitimes: 2.5, 'zdnet-kr': 2.5, geeknews: 2.5, ph: 2, hn: 2, 'hn-show': 1.5, 'daum-news': 2.2, 'arxiv-ai': 1, 'arxiv-cl': 1, 'gn-x': 0.5 };
   if (table[id] != null) return table[id];
   if (id.startsWith('masto')) return 0.2;
   if (id.startsWith('yt-')) return 2;
-  if (id.startsWith('gn') || id.startsWith('naver-corp')) return 2;
+  if (id.startsWith('gn')) return 2;
   return 1.5; // 사용자 추가 소스
 }
 

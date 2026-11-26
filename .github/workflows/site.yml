@@ -30,6 +30,9 @@ jobs:
           key: newsdesk-data-${{ github.run_id }}
           restore-keys: newsdesk-data-
       - run: node build-site.js
+        env:
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

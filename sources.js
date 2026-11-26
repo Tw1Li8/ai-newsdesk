@@ -1,10 +1,15 @@
 // 기본 소스 목록. cat: industry(업계 판도) / corp(기업 성과) / creations(AI 결과물·사례) / community / video / research
-// lang: ko | en. type: rss | hn | html. 사용자 추가 소스는 data/config.json 에 저장됩니다.
+// lang: ko | en. type: rss | hn | html | naver. 사용자 추가 소스는 data/config.json 에 저장됩니다.
 // 뉴스 검색 피드(Bing News RSS): 링크에 실제 기사 주소가 들어 있고 요약·대표 이미지도 함께 옵니다.
 const gn = (q, lang = 'ko') =>
   `https://www.bing.com/news/search?q=${encodeURIComponent(q)}&format=rss&${lang === 'ko' ? 'setmkt=ko-KR&setlang=ko' : 'setmkt=en-US&setlang=en-US'}`;
 
 const FIELDS = require('./fields');
+
+// 네이버 뉴스: NAVER API HUB 키(환경변수 NAVER_CLIENT_ID / NAVER_CLIENT_SECRET)가 있으면 공식 API, 없으면 검색 화면에서 추출.
+const NAVER_API = !!(process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET);
+const naver = (id, name, q, cat) => ({ id, name, cat, lang: 'ko', type: 'naver',
+  url: `https://naverapihub.apigw.ntruss.com/search/v1/news?display=30&sort=date&query=${encodeURIComponent(q)}` });
 
 const S = (id, name, url, cat, lang, extra = {}) => ({ id, name, url, cat, lang, type: 'rss', ...extra });
 
@@ -40,7 +45,7 @@ module.exports = [
   S('gn-ko-reg', '뉴스(KR): AI 규제·정책', gn('AI 규제 정책', 'ko'), 'industry', 'ko'),
   S('gn-art', '뉴스: AI 아트·이미지', gn('AI generated art', 'en'), 'creations', 'en'),
   S('gn-video', '뉴스: AI 영상 생성', gn('AI video generator', 'en'), 'creations', 'en'),
-  S('gn-sora', '뉴스: Sora·Veo', gn('Sora Veo video', 'en'), 'creations', 'en'),
+  S('gn-sora', '뉴스: Veo 영상 모델', gn('Google Veo video', 'en'), 'creations', 'en'),
   S('gn-mj', '뉴스: Midjourney', gn('Midjourney', 'en'), 'creations', 'en'),
   S('gn-music', '뉴스: AI 음악', gn('AI music Suno', 'en'), 'creations', 'en'),
   S('gn-code', '뉴스: AI 코딩·에이전트', gn('AI coding agent', 'en'), 'creations', 'en'),
@@ -51,10 +56,6 @@ module.exports = [
   S('gn-ko-launch', '뉴스(KR): AI 서비스 출시', gn('AI 서비스 출시', 'ko'), 'creations', 'ko'),
   S('gn-ko-ad', '뉴스(KR): AI 광고·마케팅', gn('AI 광고 마케팅', 'ko'), 'creations', 'ko'),
   S('gn-x', 'X(트위터) 화제 AI', gn('site:x.com AI', 'en'), 'community', 'en'),
-  S('gn-fb', '페이스북 화제 AI', gn('site:facebook.com AI', 'en'), 'community', 'en'),
-  S('gn-reddit', 'Reddit 화제 AI', gn('site:reddit.com AI', 'en'), 'community', 'en'),
-  S('gn-threads', '쓰레드 화제 AI', gn('site:threads.net AI', 'en'), 'community', 'en'),
-  S('gn-insta', '인스타그램 화제 AI', gn('site:instagram.com AI', 'en'), 'community', 'en'),
   S('gn-ko-sns', '뉴스(KR): SNS 화제 AI', gn('AI 화제 SNS', 'ko'), 'community', 'ko'),
 
   // ── 기업 성과: 검색어는 fields.js 에서 관리
@@ -66,8 +67,13 @@ module.exports = [
   // ── 업계 판도: 한국 (네이버·다음 배포 기사는 구글뉴스 경유로도 수집)
   S('aitimes', 'AI타임스', 'https://www.aitimes.com/rss/allArticle.xml', 'industry', 'ko'),
   S('zdnet-kr', 'ZDNet Korea', 'https://feeds.feedburner.com/zdkorea', 'industry', 'ko'),
-  { id: 'naver-news', name: '네이버 뉴스 검색', type: 'html', cat: 'industry', lang: 'ko', htmlKind: 'naver',
+  ...(NAVER_API ? [
+    naver('naver-news', '네이버 뉴스 검색', '인공지능 AI', 'industry'),
+    ...FIELDS.flatMap(([id, name, ko]) => ko.map((q, n) => naver(`naver-corp-${id}-${n + 1}`, `네이버: ${name} ${n + 1}`, q, 'corp'))),
+  ] : [
+    { id: 'naver-news', name: '네이버 뉴스 검색', type: 'html', cat: 'industry', lang: 'ko', htmlKind: 'naver',
     url: 'https://search.naver.com/search.naver?where=news&sort=1&query=' + encodeURIComponent('인공지능 AI') },
+  ]),
   { id: 'daum-news', name: '다음 뉴스 검색', type: 'html', cat: 'industry', lang: 'ko', htmlKind: 'daum',
     url: 'https://search.daum.net/search?w=news&sort=recency&q=' + encodeURIComponent('인공지능 AI') },
   S('geeknews', 'GeekNews', 'https://news.hada.io/rss/news', 'industry', 'ko'),

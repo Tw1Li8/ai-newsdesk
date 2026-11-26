@@ -373,7 +373,7 @@ async function renderSources() {
         msg.textContent = '확인 중…'; const r = await post('/api/sources', { action: 'add', url: url.value, name: name.value, cat: cat.value, lang: lang.value });
         if (r.error) { msg.textContent = r.error; return; } toast('소스를 추가했습니다. 업데이트하면 반영됩니다'); renderSources();
       } }, '추가'), msg)),
-    h('div', { class: 'panel' }, h('h4', { text: `소스 ${d.sources.length}개 — X·페이스북은 구글뉴스 검색(경유), Mastodon·HN 은 직접 수집. 인스타그램·쓰레드는 공개 피드가 없어 수집 불가` }),
+    h('div', { class: 'panel' }, h('h4', { text: `소스 ${d.sources.length}개 — X는 뉴스 검색(경유), HN 은 직접 수집` }),
       h('div', { class: 'tablewrap' }, h('table', {}, h('thead', {}, h('tr', {}, ['사용', '이름', '분류', '언어', '마지막 수집', ''].map((x) => h('th', { text: x })))),
         h('tbody', {}, d.sources.map((s) => h('tr', {},
           h('td', {}, h('input', { type: 'checkbox', checked: s.enabled, onchange: async (e) => { await post('/api/sources', { action: 'toggle', id: s.id, enabled: e.target.checked }); } })),
